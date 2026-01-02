@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生任务表生成工具 - 学生列表</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .home-container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+        
+        .home-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .home-header h1 {
+            font-size: 36px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .home-header p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .new-student-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .new-student-section h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .input-group input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .btn-create {
+            padding: 15px 30px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .btn-create:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+        
+        .student-list-section {
+            margin-top: 30px;
+        }
+        
+        .student-list-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .student-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .student-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .student-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        
+        .student-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .student-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .btn-delete-student {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+        
+        .btn-delete-student:hover {
+            background: #c82333;
+        }
+        
+        .student-info {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .student-info div {
+            margin-bottom: 5px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h3 {
+            color: #666;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="home-container">
+        <div class="home-header">
+            <h1>📚 学生任务表管理系统</h1>
+            <p>选择学生查看/编辑任务表，或创建新学生</p>
+        </div>
+        
+        <div class="new-student-section">
+            <h2>➕ 创建新学生</h2>
+            <div class="input-group">
+                <input type="text" id="newStudentName" placeholder="输入学生姓名..." onkeypress="if(event.key==='Enter')createStudent()">
+                <button onclick="createStudent()" class="btn-create">创建并编辑</button>
+            </div>
+        </div>
+        
+        <div class="student-list-section">
+            <h2>👥 学生列表</h2>
+            <div id="studentList" class="student-grid"></div>
+        </div>
+    </div>
+    
+    <script>
+        // 加载学生列表
+        function loadStudentList() {
+            const studentList = JSON.parse(localStorage.getItem('studentList') || '[]');
+            const container = document.getElementById('studentList');
+            
+            if (studentList.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>还没有学生数据</h3>
+                        <p>点击上方创建新学生开始使用</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            studentList.forEach(studentName => {
+                const savedData = localStorage.getItem(`student_${studentName}`);
+                let lastModified = '未保存';
+                let taskCount = 0;
+                let planCount = 0;
+                
+                if (savedData) {
+                    try {
+                        const data = JSON.parse(savedData);
+                        if (data.lastModified) {
+                            const date = new Date(data.lastModified);
+                            lastModified = date.toLocaleString('zh-CN');
+                        }
+                        taskCount = data.tasks ? data.tasks.length : 0;
+                        planCount = data.plans ? data.plans.length : 0;
+                    } catch (e) {
+                        console.error('解析数据失败:', e);
+                    }
+                }
+                
+                const card = document.createElement('div');
+                card.className = 'student-card';
+                card.innerHTML = `
+                    <div class="student-card-header">
+                        <div class="student-name">👤 ${studentName}</div>
+                        <button class="btn-delete-student" onclick="deleteStudent('${studentName}', event)">删除</button>
+                    </div>
+                    <div class="student-info">
+                        <div>📝 任务数：${taskCount}</div>
+                        <div>📅 计划数：${planCount}</div>
+                        <div>🕒 最后修改：${lastModified}</div>
+                    </div>
+                `;
+                
+                card.onclick = (e) => {
+                    if (!e.target.classList.contains('btn-delete-student')) {
+                        window.location.href = `student-detail.html?student=${encodeURIComponent(studentName)}`;
+                    }
+                };
+                
+                container.appendChild(card);
+            });
+        }
+        
+        // 创建新学生
+        function createStudent() {
+            const nameInput = document.getElementById('newStudentName');
+            const studentName = nameInput.value.trim();
+            
+            if (!studentName) {
+                alert('⚠️ 请输入学生姓名');
+                return;
+            }
+            
+            const studentList = JSON.parse(localStorage.getItem('studentList') || '[]');
+            
+            if (studentList.includes(studentName)) {
+                if (confirm(`学生 "${studentName}" 已存在，是否继续编辑？`)) {
+                    window.location.href = `editor.html?student=${encodeURIComponent(studentName)}`;
+                }
+                return;
+            }
+            
+            // 跳转到编辑页面
+            window.location.href = `editor.html?student=${encodeURIComponent(studentName)}`;
+        }
+        
+        // 删除学生
+        function deleteStudent(studentName, event) {
+            event.stopPropagation();
+            
+            if (!confirm(`确定要删除学生 "${studentName}" 的所有数据吗？\n此操作不可恢复！`)) {
+                return;
+            }
+            
+            // 删除学生数据
+            localStorage.removeItem(`student_${studentName}`);
+            
+            // 从学生列表中移除
+            let studentList = JSON.parse(localStorage.getItem('studentList') || '[]');
+            studentList = studentList.filter(name => name !== studentName);
+            localStorage.setItem('studentList', JSON.stringify(studentList));
+            
+            // 重新加载列表
+            loadStudentList();
+            
+            alert(`✅ 已删除学生 "${studentName}"`);
+        }
+        
+        // 页面加载时加载学生列表
+        window.onload = function() {
+            loadStudentList();
+        };
+    </script>
+</body>
+</html>

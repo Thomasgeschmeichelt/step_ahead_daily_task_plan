@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生任务表生成工具 - 编辑器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header-bar">
+            <button onclick="goBack()" class="btn-back">← 返回学生列表</button>
+            <h1>📋 学生任务表编辑器</h1>
+            <div class="student-display" id="currentStudent"></div>
+        </div>
+        
+        <div class="main-content">
+            <!-- 左侧：输入表单 -->
+            <div class="form-section">
+                <h2>📝 填写任务信息</h2>
+                
+                <!-- 第一部分：当日任务表 -->
+                <div class="form-group collapsible-section">
+                    <h3 class="collapsible-header" onclick="toggleSection('section1')">
+                        <span class="toggle-icon" id="icon1">▼</span>
+                        当日任务表
+                    </h3>
+                    <div class="collapsible-content" id="section1">
+                        <label>日期：</label>
+                        <input type="date" id="date1" onchange="updatePreview()">
+                        
+                        <label>到/离校时间：</label>
+                        <input type="text" id="schoolTime" placeholder="例如：9:31到校，18:31离校" oninput="updatePreview()">
+                        
+                        <label>今日课程：</label>
+                        <input type="text" id="todayClass" placeholder="例如：化学ukcho课" oninput="updatePreview()">
+                        
+                        <label>学生姓名：</label>
+                        <input type="text" id="studentName1" placeholder="学生姓名" readonly style="background: #f0f0f0; cursor: not-allowed;">
+                    </div>
+                </div>
+
+                <!-- 任务列表 -->
+                <div class="form-group collapsible-section">
+                    <h4 class="collapsible-header" onclick="toggleSection('section2')">
+                        <span class="toggle-icon" id="icon2">▼</span>
+                        任务列表
+                    </h4>
+                    <div class="collapsible-content" id="section2">
+                        <div id="taskList"></div>
+                        <button onclick="addTask()" class="btn-add">+ 添加任务</button>
+                    </div>
+                </div>
+
+                <!-- 第二部分：次日学习计划 -->
+                <div class="form-group collapsible-section">
+                    <h3 class="collapsible-header" onclick="toggleSection('section3')">
+                        <span class="toggle-icon" id="icon3">▼</span>
+                        次日学习任务计划
+                    </h3>
+                    <div class="collapsible-content" id="section3">
+                        <label>日期：</label>
+                        <input type="date" id="date2" onchange="updatePreview()">
+                    </div>
+                </div>
+
+                <!-- 计划任务列表 -->
+                <div class="form-group collapsible-section">
+                    <h4 class="collapsible-header" onclick="toggleSection('section4')">
+                        <span class="toggle-icon" id="icon4">▼</span>
+                        计划任务列表
+                    </h4>
+                    <div class="collapsible-content" id="section4">
+                        <div id="planList"></div>
+                        <button onclick="addPlan()" class="btn-add">+ 添加计划</button>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button onclick="saveData()" class="btn-save">💾 保存数据</button>
+                    <button onclick="exportToPNG()" class="btn-success">📥 导出PNG图片</button>
+                </div>
+            </div>
+
+            <!-- 右侧：预览区域 -->
+            <div class="preview-section">
+                <h2>👁️ 预览效果</h2>
+                <div id="preview" class="preview-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="editor.js"></script>
+</body>
+</html>
