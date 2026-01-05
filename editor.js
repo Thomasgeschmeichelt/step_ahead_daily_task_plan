@@ -237,13 +237,13 @@ function addTaskToDOM(task, index) {
             <input type="text" value="${task.duration}" placeholder="例如：1小时30分钟" oninput="updateTaskField(${index}, 'duration', this.value); updatePreview();">
             
             <label>学习安排：</label>
-            <input type="text" value="${task.content}" placeholder="例如：EDX数学P2课程，雅思单词背诵50个，午休12:00～14:00" oninput="updateTaskField(${index}, 'content', this.value); updatePreview();">
+            <textarea rows="2" placeholder="例如：EDX数学P2课程，雅思单词背诵50个，午休12:00～14:00&#10;（按Enter键换行）" oninput="updateTaskField(${index}, 'content', this.value); updatePreview();">${task.content}</textarea>
             
             <label>实际时间：</label>
             <input type="text" value="${task.actualTime}" placeholder="例如：10:00~11:30" oninput="updateTaskField(${index}, 'actualTime', this.value); updatePreview();">
             
             <label>完成情况：</label>
-            <input type="text" value="${task.status}" placeholder="例如：完成，正确率100%；超时完成，正确率95%；未完成" oninput="updateTaskField(${index}, 'status', this.value); updatePreview();">
+            <textarea rows="2" placeholder="例如：完成，正确率100%；超时完成，正确率95%；未完成&#10;（按Enter键换行）" oninput="updateTaskField(${index}, 'status', this.value); updatePreview();">${task.status}</textarea>
             
             <label>状态类型：</label>
             <select onchange="updateTaskField(${index}, 'statusType', this.value); updatePreview();">
@@ -270,13 +270,13 @@ function addPlanToDOM(plan, index) {
         </div>
         <div class="plan-inputs">
             <label>任务内容：</label>
-            <input type="text" value="${plan.content}" placeholder="例如：EDX数学P2课程，雅思单词背诵50个，午休12:00～14:00" oninput="updatePlanField(${index}, 'content', this.value); updatePreview();">
+            <textarea rows="2" placeholder="例如：EDX数学P2课程，雅思单词背诵50个，午休12:00～14:00&#10;（按Enter键换行）" oninput="updatePlanField(${index}, 'content', this.value); updatePreview();">${plan.content}</textarea>
             
             <label>规定时长：</label>
             <input type="text" value="${plan.duration}" placeholder="例如：1小时30分钟" oninput="updatePlanField(${index}, 'duration', this.value); updatePreview();">
             
             <label>备注：</label>
-            <input type="text" value="${plan.note}" placeholder="例如：昨日任务遗留，10:00~12:00，正确率>95%" oninput="updatePlanField(${index}, 'note', this.value); updatePreview();">
+            <textarea rows="2" placeholder="例如：昨日任务遗留，10:00~12:00，正确率>95%&#10;（按Enter键换行）" oninput="updatePlanField(${index}, 'note', this.value); updatePreview();">${plan.note}</textarea>
         </div>
     `;
     planListDiv.appendChild(planDiv);
@@ -330,6 +330,13 @@ function removePlan(index) {
     updatePreview();
 }
 
+// 转义HTML特殊字符但保留换行符
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // 格式化日期
 function formatDate(dateString) {
     const date = new Date(dateString);
@@ -364,11 +371,11 @@ function updatePreview() {
             </tr>
             <tr>
                 <td class="header-peach" style="box-sizing: border-box;">到/离校时间</td>
-                <td colspan="4" class="header-peach" style="box-sizing: border-box;">${schoolTime}</td>
+                <td colspan="4" class="header-peach" style="box-sizing: border-box;">${escapeHtml(schoolTime)}</td>
             </tr>
             <tr>
                 <td class="header-peach" style="box-sizing: border-box;">今日课程</td>
-                <td colspan="4" class="header-peach" style="box-sizing: border-box;">${todayClass}</td>
+                <td colspan="4" class="header-peach" style="box-sizing: border-box;">${escapeHtml(todayClass)}</td>
             </tr>
             <tr class="header-pink">
                 <td style="box-sizing: border-box;">学生姓名</td>
@@ -387,8 +394,8 @@ function updatePreview() {
             // 午休行特殊处理
             html += `
                 <tr>
-                    ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${studentName1}</td>` : ''}
-                    <td colspan="4" class="cell-lunch" style="box-sizing: border-box;">${task.content}</td>
+                    ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName1)}</td>` : ''}
+                    <td colspan="4" class="cell-lunch" style="box-sizing: border-box;">${escapeHtml(task.content)}</td>
                 </tr>
             `;
         } else {
@@ -400,11 +407,11 @@ function updatePreview() {
             
             html += `
                 <tr>
-                    ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${studentName1}</td>` : ''}
-                    <td class="cell-yellow" style="box-sizing: border-box;">${task.duration}</td>
-                    <td class="cell-yellow" style="box-sizing: border-box;">${task.content}</td>
-                    <td class="cell-yellow" style="box-sizing: border-box;">${task.actualTime}</td>
-                    <td class="cell-yellow ${statusClass}" style="box-sizing: border-box;">${task.status}</td>
+                    ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName1)}</td>` : ''}
+                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.duration)}</td>
+                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.content)}</td>
+                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.actualTime)}</td>
+                    <td class="cell-yellow ${statusClass}" style="box-sizing: border-box;">${escapeHtml(task.status)}</td>
                 </tr>
             `;
         }
@@ -437,10 +444,10 @@ function updatePreview() {
     plans.forEach((plan, index) => {
         html += `
             <tr>
-                ${index === 0 ? `<td rowspan="${planRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${studentName2}</td>` : ''}
-                <td class="cell-yellow" style="box-sizing: border-box;">${plan.content}</td>
-                <td class="cell-yellow" style="box-sizing: border-box;">${plan.duration}</td>
-                <td class="cell-yellow" style="box-sizing: border-box;">${plan.note}</td>
+                ${index === 0 ? `<td rowspan="${planRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName2)}</td>` : ''}
+                <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.content)}</td>
+                <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.duration)}</td>
+                <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.note)}</td>
             </tr>
         `;
     });
@@ -454,24 +461,36 @@ function updatePreview() {
 async function exportToPNG() {
     const preview = document.getElementById('preview');
     
-    // 显示加载提示
-    const originalContent = preview.innerHTML;
+    // 创建一个临时容器，确保生成图片时的尺寸和预览一致
+    const tempContainer = document.createElement('div');
+    tempContainer.style.cssText = `
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        width: ${preview.offsetWidth}px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        padding: 40px;
+        box-sizing: border-box;
+    `;
+    tempContainer.innerHTML = preview.innerHTML;
+    document.body.appendChild(tempContainer);
     
     try {
-        // 使用html2canvas生成高清图片
-        const canvas = await html2canvas(preview, {
-            scale: 4, // 提高清晰度到4倍分辨率，更高清
+        // 使用html2canvas生成高清图片，使用固定宽度确保布局一致
+        const canvas = await html2canvas(tempContainer, {
+            scale: 4, // 提高清晰度到4倍分辨率
             backgroundColor: '#f8f9fa',
             logging: false,
             useCORS: true,
             allowTaint: true,
             imageTimeout: 0,
-            removeContainer: true,
-            scrollY: -window.scrollY,
-            scrollX: -window.scrollX,
-            windowWidth: preview.scrollWidth,
-            windowHeight: preview.scrollHeight
+            removeContainer: false,
+            width: preview.offsetWidth,
+            windowWidth: preview.offsetWidth
         });
+        
+        // 移除临时容器
+        document.body.removeChild(tempContainer);
         
         // 转换为PNG并下载（最高质量）
         const link = document.createElement('a');
@@ -484,6 +503,11 @@ async function exportToPNG() {
         alert('✅ 高清图片导出成功！（4倍分辨率）');
     } catch (error) {
         console.error('导出失败:', error);
+        // 确保移除临时容器
+        if (tempContainer.parentNode) {
+            document.body.removeChild(tempContainer);
+        }
         alert('❌ 导出失败，请重试！');
     }
 }
+
