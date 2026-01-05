@@ -124,18 +124,22 @@ label {
 
 input[type="text"],
 input[type="date"],
-select {
+select,
+textarea {
     width: 100%;
     padding: 10px;
     border: 2px solid #e0e0e0;
     border-radius: 6px;
     font-size: 14px;
     transition: border-color 0.3s;
+    font-family: inherit;
+    resize: vertical;
 }
 
 input[type="text"]:focus,
 input[type="date"]:focus,
-select:focus {
+select:focus,
+textarea:focus {
     outline: none;
     border-color: #667eea;
 }
@@ -324,6 +328,8 @@ select:focus {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
     border-radius: 12px;
     overflow: hidden;
+    table-layout: fixed;
+    box-sizing: border-box;
 }
 
 .student-table th,
@@ -332,6 +338,11 @@ select:focus {
     padding: 16px 14px;
     text-align: center;
     line-height: 1.6;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+    white-space: pre-wrap;
 }
 
 .header-orange {
@@ -438,3 +449,4 @@ select:focus {
     margin-top: 5px;
     font-size: 12px;
 }
+
