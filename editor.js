@@ -419,40 +419,42 @@ function updatePreview() {
     
     html += `</table>`;
     
-    // 第二个表格：次日计划
-    html += `
-        <table class="student-table" style="table-layout: fixed; width: 100%; box-sizing: border-box;">
-            <colgroup>
-                <col style="width: 20%; box-sizing: border-box;">
-                <col style="width: 20%; box-sizing: border-box;">
-                <col style="width: 20%; box-sizing: border-box;">
-                <col style="width: 40%; box-sizing: border-box;">
-            </colgroup>
-            <tr>
-                <th colspan="4" class="header-orange">${formatDate(date2)}学习任务计划</th>
-            </tr>
-            <tr class="header-pink">
-                <td style="box-sizing: border-box;">学生姓名</td>
-                <td style="box-sizing: border-box;">任务内容</td>
-                <td style="box-sizing: border-box;">规定时长</td>
-                <td style="box-sizing: border-box;">备注</td>
-            </tr>
-    `;
-    
-    const planRowSpan = plans.length;
-    
-    plans.forEach((plan, index) => {
+    // 第二个表格：次日计划（仅当有计划时显示）
+    if (plans.length > 0) {
         html += `
-            <tr>
-                ${index === 0 ? `<td rowspan="${planRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName2)}</td>` : ''}
-                <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.content)}</td>
-                <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.duration)}</td>
-                <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.note)}</td>
-            </tr>
+            <table class="student-table" style="table-layout: fixed; width: 100%; box-sizing: border-box;">
+                <colgroup>
+                    <col style="width: 20%; box-sizing: border-box;">
+                    <col style="width: 20%; box-sizing: border-box;">
+                    <col style="width: 20%; box-sizing: border-box;">
+                    <col style="width: 40%; box-sizing: border-box;">
+                </colgroup>
+                <tr>
+                    <th colspan="4" class="header-orange">${formatDate(date2)}学习任务计划</th>
+                </tr>
+                <tr class="header-pink">
+                    <td style="box-sizing: border-box;">学生姓名</td>
+                    <td style="box-sizing: border-box;">任务内容</td>
+                    <td style="box-sizing: border-box;">规定时长</td>
+                    <td style="box-sizing: border-box;">备注</td>
+                </tr>
         `;
-    });
-    
-    html += `</table>`;
+        
+        const planRowSpan = plans.length;
+        
+        plans.forEach((plan, index) => {
+            html += `
+                <tr>
+                    ${index === 0 ? `<td rowspan="${planRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName2)}</td>` : ''}
+                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.content)}</td>
+                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.duration)}</td>
+                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.note)}</td>
+                </tr>
+            `;
+        });
+        
+        html += `</table>`;
+    }
     
     document.getElementById('preview').innerHTML = html;
 }
@@ -510,4 +512,3 @@ async function exportToPNG() {
         alert('❌ 导出失败，请重试！');
     }
 }
-
