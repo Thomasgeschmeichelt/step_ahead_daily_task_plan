@@ -100,15 +100,14 @@ h1 {
 }
 
 .collapsible-content {
-    max-height: 2000px;
     overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
+    transition: opacity 0.4s ease, margin-top 0.4s ease;
     opacity: 1;
     margin-top: 15px;
 }
 
 .collapsible-content.collapsed {
-    max-height: 0;
+    display: none;
     opacity: 0;
     margin-top: 0;
 }
@@ -299,8 +298,6 @@ textarea:focus {
     position: sticky;
     top: 20px;
     align-self: flex-start;
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
 }
 
 .preview-section h2 {
@@ -449,4 +446,5 @@ textarea:focus {
     margin-top: 5px;
     font-size: 12px;
 }
+
 
