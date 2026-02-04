@@ -21,7 +21,7 @@ function loadRecords() {
     const recordsData = localStorage.getItem(`student_${currentStudentName}_records`);
     if (recordsData) {
         try {
-            allRecords = JSON.parse(recordsData);
+            allRecords = normalizeRecords(JSON.parse(recordsData));
         } catch (e) {
             console.error('加载数据失败:', e);
             allRecords = [];
@@ -30,10 +30,44 @@ function loadRecords() {
         allRecords = [];
     }
     
+    // 为旧记录补充ID
+    let changed = false;
+    allRecords.forEach((record, index) => {
+        if (!record.id) {
+            record.id = `${record.date1 || 'record'}_${index}_${Math.random().toString(36).slice(2, 8)}_${Date.now()}`;
+            changed = true;
+        }
+    });
+    if (changed) {
+        localStorage.setItem(`student_${currentStudentName}_records`, JSON.stringify(allRecords));
+    }
+
     // 按日期排序，最近的在前
     allRecords.sort((a, b) => new Date(b.date1) - new Date(a.date1));
     
     displayRecords(allRecords);
+}
+
+// 规范化记录数据结构
+function normalizeRecords(data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.records)) return data.records;
+    return data ? [data] : [];
+}
+
+// 统一计划数据结构（兼容旧版数组）
+function getPlanEntries(record) {
+    if (!record || !record.plans) return [];
+    if (Array.isArray(record.plans)) {
+        const date = record.date2 || '';
+        return date ? [{ date, items: record.plans }] : [{ date: '', items: record.plans }];
+    }
+    if (typeof record.plans === 'object') {
+        return Object.keys(record.plans)
+            .sort()
+            .map(date => ({ date, items: record.plans[date] || [] }));
+    }
+    return [];
 }
 
 // 显示记录
@@ -69,7 +103,8 @@ function createRecordCard(record, index) {
     const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
     
     const taskCount = record.tasks ? record.tasks.length : 0;
-    const planCount = record.plans ? record.plans.length : 0;
+    const planEntries = getPlanEntries(record);
+    const planCount = planEntries.reduce((sum, entry) => sum + entry.items.length, 0);
     
     // 计算完成情况
     let completedTasks = 0;
@@ -90,9 +125,9 @@ function createRecordCard(record, index) {
         <div class="record-header">
             <div class="record-date">📅 ${record.date1} (${dateStr} ${weekday})</div>
             <div class="record-actions">
-                <button class="btn-edit" onclick="editRecord('${record.date1}', event)">✏️ 编辑</button>
-                <button class="btn-export" onclick="exportRecord('${record.date1}', event)">📥 导出</button>
-                <button class="btn-delete" onclick="deleteRecord('${record.date1}', event)">🗑️ 删除</button>
+                <button class="btn-edit" onclick="editRecord('${record.id || ''}', '${record.date1}', event)">✏️ 编辑</button>
+                <button class="btn-export" onclick="exportRecord('${record.id || ''}', '${record.date1}', event)">📥 导出</button>
+                <button class="btn-delete" onclick="deleteRecord('${record.id || ''}', '${record.date1}', event)">🗑️ 删除</button>
             </div>
         </div>
         
@@ -113,7 +148,7 @@ function createRecordCard(record, index) {
                 <span class="info-value">${taskCount} 项</span>
             </div>
             <div class="info-item">
-                <span class="info-label">次日计划数</span>
+                <span class="info-label">学习计划数</span>
                 <span class="info-value">${planCount} 项</span>
             </div>
             <div class="info-item">
@@ -161,16 +196,18 @@ function createNewRecord() {
 }
 
 // 编辑记录
-function editRecord(date, event) {
+function editRecord(id, date, event) {
     event.stopPropagation();
-    window.location.href = `editor.html?student=${encodeURIComponent(currentStudentName)}&date=${date}`;
+    const idParam = id ? `&id=${encodeURIComponent(id)}` : '';
+    const dateParam = date ? `&date=${date}` : '';
+    window.location.href = `editor.html?student=${encodeURIComponent(currentStudentName)}${idParam}${dateParam}`;
 }
 
 // 导出记录
-async function exportRecord(date, event) {
+async function exportRecord(id, date, event) {
     event.stopPropagation();
     
-    const record = allRecords.find(r => r.date1 === date);
+    const record = id ? allRecords.find(r => r.id === id) : allRecords.find(r => r.date1 === date);
     if (!record) {
         alert('❌ 找不到记录');
         return;
@@ -283,9 +320,11 @@ function generateTableHTML(record) {
     
     html += `</table>`;
     
-    // 第二个表格：次日计划
-    const plans = record.plans || [];
-    if (plans.length > 0) {
+    // 多日学习计划
+    const planEntries = getPlanEntries(record);
+    planEntries.forEach(entry => {
+        if (entry.items.length === 0) return;
+        const planDateLabel = entry.date ? formatDate(entry.date) : '学习任务计划';
         html += `
             <table class="student-table" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 17px; background: white; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12); border-radius: 12px; overflow: hidden; table-layout: fixed; box-sizing: border-box;">
                 <colgroup>
@@ -295,7 +334,7 @@ function generateTableHTML(record) {
                     <col style="width: 40%; box-sizing: border-box;">
                 </colgroup>
                 <tr>
-                    <th colspan="4" style="background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%); color: white; font-size: 26px; font-weight: 800; padding: 22px 20px; letter-spacing: 2px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); border: none; box-sizing: border-box;">${formatDate(record.date2)}学习任务计划</th>
+                    <th colspan="4" style="background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%); color: white; font-size: 26px; font-weight: 800; padding: 22px 20px; letter-spacing: 2px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); border: none; box-sizing: border-box;">${planDateLabel}学习任务计划</th>
                 </tr>
                 <tr style="background: linear-gradient(135deg, #ffd4e5 0%, #ffc4d6 100%);">
                     <td style="color: #2c3e50; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; padding: 16px 14px; text-align: center; border: 1px solid #e8e8e8; box-sizing: border-box;">学生姓名</td>
@@ -305,8 +344,8 @@ function generateTableHTML(record) {
                 </tr>
         `;
         
-        const planRowSpan = plans.length;
-        plans.forEach((plan, index) => {
+        const planRowSpan = entry.items.length;
+        entry.items.forEach((plan, index) => {
             html += `
                 <tr>
                     ${index === 0 ? `<td rowspan="${planRowSpan}" style="background: linear-gradient(135deg, #fff9e6 0%, #fff4cc 100%); font-weight: 800; font-size: 20px; color: #2c3e50; border-right: 3px solid #ff8c42; letter-spacing: 1px; padding: 16px 14px; text-align: center; border: 1px solid #e8e8e8; box-sizing: border-box;">${currentStudentName}</td>` : ''}
@@ -318,20 +357,25 @@ function generateTableHTML(record) {
         });
         
         html += `</table>`;
-    }
+    });
     
     return html;
 }
 
 // 删除记录
-function deleteRecord(date, event) {
+function deleteRecord(id, date, event) {
     event.stopPropagation();
+    const label = date || '该记录';
     
-    if (!confirm(`确定要删除 ${date} 的任务表吗？\n此操作不可恢复！`)) {
+    if (!confirm(`确定要删除 ${label} 的任务表吗？\n此操作不可恢复！`)) {
         return;
     }
     
-    allRecords = allRecords.filter(r => r.date1 !== date);
+    if (id) {
+        allRecords = allRecords.filter(r => r.id !== id);
+    } else {
+        allRecords = allRecords.filter(r => r.date1 !== date);
+    }
     localStorage.setItem(`student_${currentStudentName}_records`, JSON.stringify(allRecords));
     
     loadRecords();
@@ -342,3 +386,4 @@ function deleteRecord(date, event) {
 function goBack() {
     window.location.href = 'index.html';
 }
+
