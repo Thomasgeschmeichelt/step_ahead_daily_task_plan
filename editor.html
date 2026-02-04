@@ -52,27 +52,15 @@
                     </div>
                 </div>
 
-                <!-- 第二部分：次日学习计划 -->
+                <!-- 第二部分：学习任务计划（多日） -->
                 <div class="form-group collapsible-section">
                     <h3 class="collapsible-header" onclick="toggleSection('section3')">
                         <span class="toggle-icon" id="icon3">▼</span>
-                        次日学习任务计划
+                        学习任务计划（多日）
                     </h3>
                     <div class="collapsible-content" id="section3">
-                        <label>日期：</label>
-                        <input type="date" id="date2" onchange="updatePreview()">
-                    </div>
-                </div>
-
-                <!-- 计划任务列表 -->
-                <div class="form-group collapsible-section">
-                    <h4 class="collapsible-header" onclick="toggleSection('section4')">
-                        <span class="toggle-icon" id="icon4">▼</span>
-                        计划任务列表
-                    </h4>
-                    <div class="collapsible-content" id="section4">
-                        <div id="planList"></div>
-                        <button onclick="addPlan()" class="btn-add">+ 添加计划</button>
+                        <div id="planDateContainer"></div>
+                        <button onclick="addPlanDate()" class="btn-add">+ 添加计划日期</button>
                     </div>
                 </div>
 
@@ -91,6 +79,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="storage.js"></script>
     <script src="editor.js"></script>
 </body>
 </html>
+
