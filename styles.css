@@ -153,6 +153,35 @@ textarea:focus {
     position: relative;
 }
 
+.plan-date-section {
+    background: #f0f5ff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #667eea;
+}
+
+.plan-date-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.plan-date-header label {
+    margin: 0;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.plan-date-header input[type="date"] {
+    flex: 1;
+}
+
+.plan-date-header .btn-remove {
+    white-space: nowrap;
+}
+
 .task-item-header,
 .plan-item-header {
     display: flex;
@@ -446,5 +475,6 @@ textarea:focus {
     margin-top: 5px;
     font-size: 12px;
 }
+
 
 
