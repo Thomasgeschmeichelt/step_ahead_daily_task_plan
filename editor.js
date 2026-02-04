@@ -3,11 +3,17 @@ let currentStudentName = '';
 // 当前编辑的日期
 let currentDate = '';
 
+// 当前记录ID
+let currentRecordId = '';
+
 // 任务数据
 let tasks = [];
 
-// 计划数据
-let plans = [];
+// 计划数据（按日期分组）
+let plans = {};
+
+// 计划日期列表（用于保持顺序）
+let planDates = [];
 
 // 初始化页面
 window.onload = function() {
@@ -15,6 +21,7 @@ window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     currentStudentName = urlParams.get('student') || '';
     currentDate = urlParams.get('date') || '';
+    currentRecordId = urlParams.get('id') || '';
     
     if (!currentStudentName) {
         alert('⚠️ 未指定学生，返回首页');
@@ -35,7 +42,17 @@ window.onload = function() {
     // 如果没有保存的数据，初始化为空（不加载示例数据）
     if (!hasData) {
         tasks = [];
-        plans = [];
+        plans = {};
+        planDates = [];
+        // 为新记录初始化一个计划日期（明天）
+        const baseDate = new Date();
+        baseDate.setDate(baseDate.getDate() + 1);
+        const year = baseDate.getFullYear();
+        const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+        const day = String(baseDate.getDate()).padStart(2, '0');
+        const newDateStr = `${year}-${month}-${day}`;
+        planDates = [newDateStr];
+        plans[newDateStr] = [];
     }
     
     loadInitialData();
@@ -57,6 +74,13 @@ function toggleSection(sectionId) {
     }
 }
 
+// 规范化记录数据结构
+function normalizeRecords(data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.records)) return data.records;
+    return data ? [data] : [];
+}
+
 // 加载默认数据
 function loadDefaultData() {
     tasks = [
@@ -68,13 +92,22 @@ function loadDefaultData() {
         { duration: '1H20mins', content: '学校化学作业', actualTime: '16:40-18:00', status: '完成✓', statusType: 'complete' }
     ];
     
-    plans = [
-        { content: 'EDX数学P1', duration: '2H', note: '10:00-12:00' },
-        { content: '雅思单词list11(75词)', duration: '1H', note: '准确率>95%' },
-        { content: 'EDX数学P1课后作业', duration: '1.5H', note: '' },
-        { content: '化学学科作业', duration: '1H', note: '12.14日遗留' },
-        { content: '数学错题订正', duration: '0.5H', note: '' }
-    ];
+    const today = new Date();
+    today.setDate(today.getDate() + 1);
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    planDates = [dateStr];
+    plans = {
+        [dateStr]: [
+            { content: 'EDX数学P1', duration: '2H', note: '10:00-12:00' },
+            { content: '雅思单词list11(75词)', duration: '1H', note: '准确率>95%' },
+            { content: 'EDX数学P1课后作业', duration: '1.5H', note: '' },
+            { content: '化学学科作业', duration: '1H', note: '12.14日遗留' },
+            { content: '数学错题订正', duration: '0.5H', note: '' }
+        ]
+    };
 }
 
 // 设置今天的日期
@@ -90,7 +123,7 @@ function setTodayDate() {
         document.getElementById('date1').value = todayStr;
     }
     
-    // 次日日期设置为明天
+    // 初始化计划日期为明天
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowYear = tomorrow.getFullYear();
@@ -99,7 +132,8 @@ function setTodayDate() {
     const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
     
     if (!currentDate) {
-        document.getElementById('date2').value = tomorrowStr;
+        planDates = [tomorrowStr];
+        plans[tomorrowStr] = [];
     }
 }
 
@@ -110,19 +144,40 @@ function loadSavedData() {
         const recordsData = localStorage.getItem(`student_${currentStudentName}_records`);
         if (recordsData) {
             try {
-                const records = JSON.parse(recordsData);
-                const record = records.find(r => r.date1 === currentDate);
+                let records = normalizeRecords(JSON.parse(recordsData));
+                let record = null;
+                if (currentRecordId) {
+                    record = records.find(r => r.id === currentRecordId);
+                }
+                if (!record && currentDate) {
+                    record = records.find(r => r.date1 === currentDate);
+                    if (record && record.id) {
+                        currentRecordId = record.id;
+                    }
+                }
                 
                 if (record) {
                     // 恢复表单数据
                     document.getElementById('date1').value = record.date1;
                     document.getElementById('schoolTime').value = record.schoolTime || '';
                     document.getElementById('todayClass').value = record.todayClass || '';
-                    document.getElementById('date2').value = record.date2 || '';
-                    
-                    // 恢复任务和计划
+                    // 恢复任务
                     tasks = record.tasks || [];
-                    plans = record.plans || [];
+                    
+                    // 恢复计划数据 - 兼容旧格式
+                    if (record.plans) {
+                        if (Array.isArray(record.plans)) {
+                            const date2 = record.date2 || '';
+                            plans = date2 ? { [date2]: record.plans } : {};
+                            planDates = date2 ? [date2] : [];
+                        } else {
+                            plans = record.plans;
+                            planDates = Object.keys(plans).sort();
+                        }
+                    } else {
+                        plans = {};
+                        planDates = [];
+                    }
                     
                     console.log('✅ 数据加载成功');
                     return true;
@@ -145,10 +200,10 @@ function saveData() {
     }
     
     const recordData = {
+        id: currentRecordId || `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         date1: date1,
         schoolTime: document.getElementById('schoolTime').value,
         todayClass: document.getElementById('todayClass').value,
-        date2: document.getElementById('date2').value,
         tasks: tasks,
         plans: plans,
         lastModified: new Date().toISOString()
@@ -159,19 +214,21 @@ function saveData() {
     let records = [];
     if (recordsData) {
         try {
-            records = JSON.parse(recordsData);
+            records = normalizeRecords(JSON.parse(recordsData));
         } catch (e) {
             console.error('解析记录失败:', e);
         }
     }
     
     // 查找是否已存在该日期的记录
-    const existingIndex = records.findIndex(r => r.date1 === date1);
+    const existingIndex = currentRecordId
+        ? records.findIndex(r => r.id === currentRecordId)
+        : -1;
     if (existingIndex >= 0) {
         // 更新现有记录
         records[existingIndex] = recordData;
     } else {
-        // 添加新记录
+        // 添加新记录（即使同一天也保留）
         records.push(recordData);
     }
     
@@ -183,8 +240,9 @@ function saveData() {
     
     alert('✅ 数据已保存！');
     
-    // 更新当前日期
+    // 更新当前日期与记录ID
     currentDate = date1;
+    currentRecordId = recordData.id;
 }
 
 // 更新学生列表
@@ -213,13 +271,8 @@ function loadInitialData() {
     tasks.forEach((task, index) => {
         addTaskToDOM(task, index);
     });
-    
-    const planListDiv = document.getElementById('planList');
-    planListDiv.innerHTML = '';
-    
-    plans.forEach((plan, index) => {
-        addPlanToDOM(plan, index);
-    });
+
+    loadPlanDates();
 }
 
 // 添加任务到DOM
@@ -259,24 +312,26 @@ function addTaskToDOM(task, index) {
 }
 
 // 添加计划到DOM
-function addPlanToDOM(plan, index) {
-    const planListDiv = document.getElementById('planList');
+function addPlanToDOM(plan, dateStr, index) {
+    const planListDiv = document.getElementById(`planList-${dateStr}`);
+    if (!planListDiv) return;
+
     const planDiv = document.createElement('div');
     planDiv.className = 'plan-item';
     planDiv.innerHTML = `
         <div class="plan-item-header">
             <strong>计划 ${index + 1}</strong>
-            <button onclick="removePlan(${index})" class="btn-remove">删除</button>
+            <button onclick="removePlan('${dateStr}', ${index})" class="btn-remove">删除</button>
         </div>
         <div class="plan-inputs">
             <label>任务内容：</label>
-            <textarea rows="2" placeholder="例如：EDX数学P2课程，雅思单词背诵50个，午休12:00～14:00&#10;（按Enter键换行）" oninput="updatePlanField(${index}, 'content', this.value); updatePreview();">${plan.content}</textarea>
+            <textarea rows="2" placeholder="例如：EDX数学P2课程，雅思单词背诵50个，午休12:00～14:00&#10;（按Enter键换行）" oninput="updatePlanField('${dateStr}', ${index}, 'content', this.value); updatePreview();">${plan.content}</textarea>
             
             <label>规定时长：</label>
-            <input type="text" value="${plan.duration}" placeholder="例如：1小时30分钟" oninput="updatePlanField(${index}, 'duration', this.value); updatePreview();">
+            <input type="text" value="${plan.duration}" placeholder="例如：1小时30分钟" oninput="updatePlanField('${dateStr}', ${index}, 'duration', this.value); updatePreview();">
             
             <label>备注：</label>
-            <textarea rows="2" placeholder="例如：昨日任务遗留，10:00~12:00，正确率>95%&#10;（按Enter键换行）" oninput="updatePlanField(${index}, 'note', this.value); updatePreview();">${plan.note}</textarea>
+            <textarea rows="2" placeholder="例如：昨日任务遗留，10:00~12:00，正确率>95%&#10;（按Enter键换行）" oninput="updatePlanField('${dateStr}', ${index}, 'note', this.value); updatePreview();">${plan.note}</textarea>
         </div>
     `;
     planListDiv.appendChild(planDiv);
@@ -288,8 +343,10 @@ function updateTaskField(index, field, value) {
 }
 
 // 更新计划字段
-function updatePlanField(index, field, value) {
-    plans[index][field] = value;
+function updatePlanField(dateStr, index, field, value) {
+    if (plans[dateStr] && plans[dateStr][index]) {
+        plans[dateStr][index][field] = value;
+    }
 }
 
 // 添加新任务
@@ -305,15 +362,101 @@ function addTask() {
     addTaskToDOM(newTask, tasks.length - 1);
 }
 
-// 添加新计划
-function addPlan() {
+// 加载计划日期列表
+function loadPlanDates() {
+    const planDateContainer = document.getElementById('planDateContainer');
+    if (!planDateContainer) return;
+
+    planDateContainer.innerHTML = '';
+
+    planDates.forEach(dateStr => {
+        const dateSection = document.createElement('div');
+        dateSection.className = 'plan-date-section';
+        dateSection.innerHTML = `
+            <div class="plan-date-header">
+                <label>计划日期：</label>
+                <input type="date" value="${dateStr}" onchange="updatePlanDate('${dateStr}', this.value); updatePreview();" style="flex: 1;">
+                <button onclick="removePlanDate('${dateStr}')" class="btn-remove">删除日期</button>
+            </div>
+            <div id="planList-${dateStr}"></div>
+            <button onclick="addPlanToDate('${dateStr}')" class="btn-add">+ 添加计划</button>
+        `;
+        planDateContainer.appendChild(dateSection);
+
+        const planItems = plans[dateStr] || [];
+        planItems.forEach((plan, index) => {
+            addPlanToDOM(plan, dateStr, index);
+        });
+    });
+}
+
+// 添加计划日期
+function addPlanDate() {
+    let baseDate = new Date();
+    if (planDates.length > 0) {
+        baseDate = new Date(planDates[planDates.length - 1]);
+    }
+    baseDate.setDate(baseDate.getDate() + 1);
+    const year = baseDate.getFullYear();
+    const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+    const day = String(baseDate.getDate()).padStart(2, '0');
+    const newDateStr = `${year}-${month}-${day}`;
+
+    if (!planDates.includes(newDateStr)) {
+        planDates.push(newDateStr);
+        plans[newDateStr] = [];
+        loadPlanDates();
+        updatePreview();
+    }
+}
+
+// 更新计划日期
+function updatePlanDate(oldDateStr, newDateStr) {
+    if (!newDateStr || oldDateStr === newDateStr) return;
+    if (planDates.includes(newDateStr)) {
+        alert('⚠️ 该日期已存在，请选择其他日期');
+        loadPlanDates();
+        return;
+    }
+    plans[newDateStr] = plans[oldDateStr] || [];
+    delete plans[oldDateStr];
+    planDates = planDates.map(d => (d === oldDateStr ? newDateStr : d));
+    loadPlanDates();
+    updatePreview();
+}
+
+// 删除计划日期
+function removePlanDate(dateStr) {
+    if (confirm(`确定删除 ${dateStr} 的所有计划吗？`)) {
+        planDates = planDates.filter(d => d !== dateStr);
+        delete plans[dateStr];
+        loadPlanDates();
+        updatePreview();
+    }
+}
+
+// 为指定日期添加计划
+function addPlanToDate(dateStr) {
+    if (!plans[dateStr]) {
+        plans[dateStr] = [];
+    }
     const newPlan = {
         content: '',
         duration: '',
         note: ''
     };
-    plans.push(newPlan);
-    addPlanToDOM(newPlan, plans.length - 1);
+    plans[dateStr].push(newPlan);
+    loadPlanDates();
+    updatePreview();
+}
+
+// 添加新计划（兼容按钮）
+function addPlan() {
+    if (planDates.length === 0) {
+        addPlanDate();
+        return;
+    }
+    addPlanToDate(planDates[0]);
 }
 
 // 删除任务
@@ -324,10 +467,12 @@ function removeTask(index) {
 }
 
 // 删除计划
-function removePlan(index) {
-    plans.splice(index, 1);
-    loadInitialData();
-    updatePreview();
+function removePlan(dateStr, index) {
+    if (plans[dateStr]) {
+        plans[dateStr].splice(index, 1);
+        loadPlanDates();
+        updatePreview();
+    }
 }
 
 // 转义HTML特殊字符但保留换行符
@@ -352,109 +497,116 @@ function updatePreview() {
     const todayClass = document.getElementById('todayClass').value;
     const studentName1 = document.getElementById('studentName1').value;
     
-    const date2 = document.getElementById('date2').value;
-    // 次日计划使用相同的学生姓名
+    // 计划表使用相同的学生姓名
     const studentName2 = studentName1;
     
-    let html = `
-        <!-- 第一个表格：当日任务 -->
-        <table class="student-table" style="table-layout: fixed; width: 100%; box-sizing: border-box;">
-            <colgroup>
-                <col style="width: 20%; box-sizing: border-box;">
-                <col style="width: 20%; box-sizing: border-box;">
-                <col style="width: 20%; box-sizing: border-box;">
-                <col style="width: 20%; box-sizing: border-box;">
-                <col style="width: 20%; box-sizing: border-box;">
-            </colgroup>
-            <tr>
-                <th colspan="5" class="header-orange">${formatDate(date1)}学生任务表</th>
-            </tr>
-            <tr>
-                <td class="header-peach" style="box-sizing: border-box;">到/离校时间</td>
-                <td colspan="4" class="header-peach" style="box-sizing: border-box;">${escapeHtml(schoolTime)}</td>
-            </tr>
-            <tr>
-                <td class="header-peach" style="box-sizing: border-box;">今日课程</td>
-                <td colspan="4" class="header-peach" style="box-sizing: border-box;">${escapeHtml(todayClass)}</td>
-            </tr>
-            <tr class="header-pink">
-                <td style="box-sizing: border-box;">学生姓名</td>
-                <td style="box-sizing: border-box;">规定时间</td>
-                <td style="box-sizing: border-box;">学习安排</td>
-                <td style="box-sizing: border-box;">实际时间</td>
-                <td style="box-sizing: border-box;">完成情况</td>
-            </tr>
-    `;
-    
-    // 计算学生姓名单元格应该跨越的行数
-    const studentRowSpan = tasks.length;
-    
-    tasks.forEach((task, index) => {
-        if (task.statusType === 'lunch') {
-            // 午休行特殊处理
-            html += `
-                <tr>
-                    ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName1)}</td>` : ''}
-                    <td colspan="4" class="cell-lunch" style="box-sizing: border-box;">${escapeHtml(task.content)}</td>
-                </tr>
-            `;
-        } else {
-            // 普通任务行
-            let statusClass = '';
-            if (task.statusType === 'complete') statusClass = 'status-complete';
-            else if (task.statusType === 'super') statusClass = 'status-super-complete';
-            else if (task.statusType === 'incomplete') statusClass = 'status-incomplete';
-            
-            html += `
-                <tr>
-                    ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName1)}</td>` : ''}
-                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.duration)}</td>
-                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.content)}</td>
-                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.actualTime)}</td>
-                    <td class="cell-yellow ${statusClass}" style="box-sizing: border-box;">${escapeHtml(task.status)}</td>
-                </tr>
-            `;
-        }
-    });
-    
-    html += `</table>`;
-    
-    // 第二个表格：次日计划（仅当有计划时显示）
-    if (plans.length > 0) {
+    let html = '';
+
+    if (tasks.length > 0) {
         html += `
+            <!-- 第一个表格：当日任务 -->
             <table class="student-table" style="table-layout: fixed; width: 100%; box-sizing: border-box;">
                 <colgroup>
                     <col style="width: 20%; box-sizing: border-box;">
                     <col style="width: 20%; box-sizing: border-box;">
                     <col style="width: 20%; box-sizing: border-box;">
-                    <col style="width: 40%; box-sizing: border-box;">
+                    <col style="width: 20%; box-sizing: border-box;">
+                    <col style="width: 20%; box-sizing: border-box;">
                 </colgroup>
                 <tr>
-                    <th colspan="4" class="header-orange">${formatDate(date2)}学习任务计划</th>
+                    <th colspan="5" class="header-orange">${formatDate(date1)}学生任务表</th>
+                </tr>
+                <tr>
+                    <td class="header-peach" style="box-sizing: border-box;">到/离校时间</td>
+                    <td colspan="4" class="header-peach" style="box-sizing: border-box;">${escapeHtml(schoolTime)}</td>
+                </tr>
+                <tr>
+                    <td class="header-peach" style="box-sizing: border-box;">今日课程</td>
+                    <td colspan="4" class="header-peach" style="box-sizing: border-box;">${escapeHtml(todayClass)}</td>
                 </tr>
                 <tr class="header-pink">
                     <td style="box-sizing: border-box;">学生姓名</td>
-                    <td style="box-sizing: border-box;">任务内容</td>
-                    <td style="box-sizing: border-box;">规定时长</td>
-                    <td style="box-sizing: border-box;">备注</td>
+                    <td style="box-sizing: border-box;">规定时间</td>
+                    <td style="box-sizing: border-box;">学习安排</td>
+                    <td style="box-sizing: border-box;">实际时间</td>
+                    <td style="box-sizing: border-box;">完成情况</td>
                 </tr>
         `;
+    }
+    
+    if (tasks.length > 0) {
+        // 计算学生姓名单元格应该跨越的行数
+        const studentRowSpan = tasks.length;
         
-        const planRowSpan = plans.length;
-        
-        plans.forEach((plan, index) => {
-            html += `
-                <tr>
-                    ${index === 0 ? `<td rowspan="${planRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName2)}</td>` : ''}
-                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.content)}</td>
-                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.duration)}</td>
-                    <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.note)}</td>
-                </tr>
-            `;
+        tasks.forEach((task, index) => {
+            if (task.statusType === 'lunch') {
+                // 午休行特殊处理
+                html += `
+                    <tr>
+                        ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName1)}</td>` : ''}
+                        <td colspan="4" class="cell-lunch" style="box-sizing: border-box;">${escapeHtml(task.content)}</td>
+                    </tr>
+                `;
+            } else {
+                // 普通任务行
+                let statusClass = '';
+                if (task.statusType === 'complete') statusClass = 'status-complete';
+                else if (task.statusType === 'super') statusClass = 'status-super-complete';
+                else if (task.statusType === 'incomplete') statusClass = 'status-incomplete';
+                
+                html += `
+                    <tr>
+                        ${index === 0 ? `<td rowspan="${studentRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName1)}</td>` : ''}
+                        <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.duration)}</td>
+                        <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.content)}</td>
+                        <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(task.actualTime)}</td>
+                        <td class="cell-yellow ${statusClass}" style="box-sizing: border-box;">${escapeHtml(task.status)}</td>
+                    </tr>
+                `;
+            }
         });
         
         html += `</table>`;
     }
+    
+    // 多日计划表格（按日期循环生成）
+    planDates.forEach(dateStr => {
+        if (plans[dateStr] && plans[dateStr].length > 0) {
+            html += `
+                <table class="student-table" style="table-layout: fixed; width: 100%; box-sizing: border-box;">
+                    <colgroup>
+                        <col style="width: 20%; box-sizing: border-box;">
+                        <col style="width: 20%; box-sizing: border-box;">
+                        <col style="width: 20%; box-sizing: border-box;">
+                        <col style="width: 40%; box-sizing: border-box;">
+                    </colgroup>
+                    <tr>
+                        <th colspan="4" class="header-orange">${formatDate(dateStr)}学习任务计划</th>
+                    </tr>
+                    <tr class="header-pink">
+                        <td style="box-sizing: border-box;">学生姓名</td>
+                        <td style="box-sizing: border-box;">任务内容</td>
+                        <td style="box-sizing: border-box;">规定时长</td>
+                        <td style="box-sizing: border-box;">备注</td>
+                    </tr>
+            `;
+            
+            const planRowSpan = plans[dateStr].length;
+            
+            plans[dateStr].forEach((plan, index) => {
+                html += `
+                    <tr>
+                        ${index === 0 ? `<td rowspan="${planRowSpan}" class="student-name-cell" style="box-sizing: border-box;">${escapeHtml(studentName2)}</td>` : ''}
+                        <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.content)}</td>
+                        <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.duration)}</td>
+                        <td class="cell-yellow" style="box-sizing: border-box;">${escapeHtml(plan.note)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `</table>`;
+        }
+    });
     
     document.getElementById('preview').innerHTML = html;
 }
@@ -512,3 +664,4 @@ async function exportToPNG() {
         alert('❌ 导出失败，请重试！');
     }
 }
+
