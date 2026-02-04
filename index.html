@@ -218,7 +218,13 @@
                             lastModified = date.toLocaleString('zh-CN');
                         }
                         taskCount = data.tasks ? data.tasks.length : 0;
-                        planCount = data.plans ? data.plans.length : 0;
+                        if (Array.isArray(data.plans)) {
+                            planCount = data.plans.length;
+                        } else if (data.plans && typeof data.plans === 'object') {
+                            planCount = Object.values(data.plans).reduce((sum, items) => sum + (items ? items.length : 0), 0);
+                        } else {
+                            planCount = 0;
+                        }
                     } catch (e) {
                         console.error('解析数据失败:', e);
                     }
@@ -300,3 +306,4 @@
     </script>
 </body>
 </html>
+
